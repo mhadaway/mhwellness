@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { getPlan, getClient, savePlan } from '../utils/storage.js'
 import { DAYS, buildPlanFromIntake } from '../utils/planDefaults.js'
+import { getApiKey, setApiKey, callClaude, buildGeneratePrompt } from '../utils/claude.js'
 
 const TABS = ['Overview', 'Nutrition', 'Fitness', 'Supplements', 'Daily Guide']
 
@@ -14,6 +15,10 @@ export default function PlanEditor() {
 
   const [tab, setTab] = useState(0)
   const [saved, setSaved] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [genError, setGenError] = useState('')
+  const [showKeyPanel, setShowKeyPanel] = useState(false)
+  const [keyDraft, setKeyDraft] = useState(getApiKey())
 
   const initPlan = existing || buildPlanFromIntake(client || {}, intake)
   const [plan, setPlan] = useState({ ...initPlan, clientId: id })
@@ -23,6 +28,32 @@ export default function PlanEditor() {
       <div className="empty-state"><h3>Client not found</h3><Link to="/" className="btn btn-primary">← Back</Link></div>
     </div>
   )
+
+  async function handleGenerate() {
+    if (!getApiKey()) { setShowKeyPanel(true); return }
+    setGenerating(true)
+    setGenError('')
+    try {
+      const raw = await callClaude(
+        'You are an expert physical therapist and wellness coach. Generate evidence-based, personalized wellness plans. Return ONLY valid JSON — no markdown, no explanation.',
+        buildGeneratePrompt(client, intake)
+      )
+      const text = raw.replace(/^```(?:json)?\n?/m, '').replace(/\n?```\s*$/m, '').trim()
+      const generated = JSON.parse(text)
+      setPlan(p => ({
+        ...p,
+        sections: generated.sections || p.sections,
+        weeklyMeals: generated.weeklyMeals || p.weeklyMeals,
+        weeklyWorkouts: generated.weeklyWorkouts || p.weeklyWorkouts,
+        supplements: generated.supplements || p.supplements,
+      }))
+      setSaved(false)
+    } catch (err) {
+      setGenError(err.message)
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   function update(field, value) {
     setPlan(p => ({ ...p, [field]: value }))
@@ -162,6 +193,7 @@ export default function PlanEditor() {
                 <Link to={`/clients/${id}/plans/${planId}/daily`} className="btn btn-ghost btn-sm">Daily Guide</Link>
               </>
             )}
+            <button onClick={handleGenerate} className="btn btn-amber btn-sm" disabled={generating}>✦ Generate with AI</button>
             <button onClick={handleSave} className="btn btn-primary btn-sm">Save Plan</button>
           </div>
         </div>
@@ -489,6 +521,51 @@ export default function PlanEditor() {
         </span>
         <button onClick={handleSave} className="btn btn-primary">Save Plan</button>
       </div>
+
+      {/* API key panel */}
+      {showKeyPanel && (
+        <div className="gen-overlay" onClick={() => setShowKeyPanel(false)}>
+          <div className="editor-api-key-panel" onClick={e => e.stopPropagation()}>
+            <h4>Anthropic API Key</h4>
+            <p>Enter your API key to enable AI-powered plan generation. It's stored only in your browser.</p>
+            <input
+              className="form-input"
+              type="password"
+              placeholder="sk-ant-..."
+              value={keyDraft}
+              onChange={e => setKeyDraft(e.target.value)}
+              autoFocus
+            />
+            <div className="editor-api-key-actions">
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowKeyPanel(false)}>Cancel</button>
+              <button className="btn btn-primary btn-sm" onClick={() => {
+                setApiKey(keyDraft)
+                setShowKeyPanel(false)
+                if (keyDraft.trim()) handleGenerate()
+              }}>Save &amp; Generate</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Generation loading overlay */}
+      {generating && (
+        <div className="gen-overlay">
+          <div className="gen-spinner-wrap">
+            <div className="gen-spinner" />
+            <div className="gen-message">Generating wellness plan…</div>
+            <div className="gen-sub">This may take 30–60 seconds</div>
+          </div>
+        </div>
+      )}
+
+      {/* Error bar */}
+      {genError && (
+        <div className="gen-error-bar">
+          <span>⚠ {genError}</span>
+          <button className="gen-error-dismiss" onClick={() => setGenError('')}>×</button>
+        </div>
+      )}
     </div>
   )
 }
