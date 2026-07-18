@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ChiroAI Scribe — AI Clinical Documentation</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+        },
+        animation: {
+          'fade-in': 'fadeIn 0.4s ease-out',
+          'slide-up': 'slideUp 0.4s ease-out',
+        },
+        keyframes: {
+          fadeIn: { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
+          slideUp: { '0%': { opacity: 0, transform: 'translateY(8px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+        },
+      },
+    },
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+  .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 9999px; }
+  .toast-enter { animation: toastIn 0.25s ease-out; }
+  @keyframes toastIn { 0% { opacity: 0; transform: translate(-50%, 8px); } 100% { opacity: 1; transform: translate(-50%, 0); } }
+  textarea:focus { outline: none; }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased h-screen overflow-hidden">
+
+<div class="flex h-screen w-full">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="hidden md:flex md:w-64 flex-col shrink-0 bg-white border-r border-slate-200 h-screen">
+    <!-- Logo -->
+    <div class="h-16 flex items-center gap-2.5 px-5 border-b border-slate-200">
+      <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 shadow-sm shadow-blue-600/20">
+        <i data-lucide="bone" class="w-5 h-5 text-white"></i>
+      </div>
+      <div class="leading-tight">
+        <p class="font-bold text-slate-900 text-[15px] tracking-tight">ChiroAI Scribe</p>
+        <p class="text-[11px] text-slate-400 font-medium">Clinical Documentation</p>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-3 py-4 space-y-1">
+      <p class="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Workspace</p>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-100">
+        <i data-lucide="file-text" class="w-4 h-4"></i>
+        Current Patient
+      </a>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+        <i data-lucide="users" class="w-4 h-4"></i>
+        Patient Queue
+        <span class="ml-auto text-[11px] font-semibold text-slate-400 bg-slate-100 rounded-full px-2 py-0.5">4</span>
+      </a>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+        <i data-lucide="layout-template" class="w-4 h-4"></i>
+        Templates
+      </a>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+        <i data-lucide="settings" class="w-4 h-4"></i>
+        Settings
+      </a>
+    </nav>
+
+    <!-- User -->
+    <div class="border-t border-slate-200 p-3">
+      <button class="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+        <div class="w-9 h-9 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-bold shrink-0">DS</div>
+        <div class="text-left leading-tight">
+          <p class="text-sm font-semibold text-slate-800">Dr. Smith</p>
+          <p class="text-xs text-slate-400">Chiropractor, DC</p>
+        </div>
+        <i data-lucide="chevron-up" class="w-4 h-4 text-slate-400 ml-auto"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN COLUMN ============ -->
+  <div class="flex-1 flex flex-col h-screen min-w-0">
+
+    <!-- ============ TOP HEADER ============ -->
+    <header class="h-16 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <button class="md:hidden text-slate-500">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+        <div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0 ring-1 ring-slate-200">
+          <i data-lucide="user-round" class="w-4.5 h-4.5 text-slate-500"></i>
+        </div>
+        <div class="min-w-0 leading-tight">
+          <p class="text-sm font-bold text-slate-900 truncate">John Doe</p>
+          <p class="text-xs text-slate-400">Visit Date: Today</p>
+        </div>
+        <span id="status-badge" class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200 transition-colors">
+          <span id="status-dot" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+          Drafting
+        </span>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="copy-btn" disabled
+          class="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg border border-slate-200 text-slate-400 bg-white cursor-not-allowed transition-all disabled:opacity-60">
+          <i data-lucide="clipboard-copy" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Copy to Clipboard</span>
+        </button>
+        <button id="export-btn" disabled
+          class="inline-flex items-center gap-1.5 text-sm font-semibold px-3.5 py-2 rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed transition-all">
+          <i data-lucide="upload" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Export to EHR</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ============ WORKSPACE ============ -->
+    <main class="flex-1 min-h-0 overflow-hidden bg-slate-50">
+      <div class="h-full grid grid-cols-1 lg:grid-cols-2 gap-5 p-4 sm:p-6 overflow-y-auto lg:overflow-hidden">
+
+        <!-- ===== LEFT: RAW INPUT ===== -->
+        <section class="flex flex-col min-h-0 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+              <i data-lucide="mic" class="w-4 h-4 text-slate-400"></i>
+              <h2 class="text-sm font-bold text-slate-900">Raw Transcript / Shorthand</h2>
+            </div>
+            <span class="text-[11px] font-medium text-slate-400">Voice-to-text / manual entry</span>
+          </div>
+
+          <div class="flex-1 min-h-0 p-5 flex flex-col gap-4">
+            <textarea
+              id="transcript-input"
+              class="flex-1 min-h-[220px] lg:min-h-0 w-full resize-none text-[15px] leading-relaxed text-slate-700 placeholder-slate-400 rounded-lg border border-slate-200 bg-slate-50/60 focus:bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 p-4 transition-all scrollbar-thin"
+              placeholder="Type or paste shorthand notes here..."
+            >Patient complains of worsening lower back pain over the last 3 days. 6 out of 10. Worse when sitting for long periods. Lumbar spine ROM restricted in flexion and right lateral bending. Muscle spasm in right QL. Palpated restrictions at L4 and L5. Adjusted L5 supine. Patient felt immediate relief. Ice recommended for 15 mins. See again next Tuesday.</textarea>
+
+            <button id="generate-btn"
+              class="shrink-0 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm py-3 shadow-sm shadow-blue-600/20 transition-all disabled:opacity-70 disabled:cursor-not-allowed">
+              <i data-lucide="wand-sparkles" class="w-4 h-4" id="generate-icon"></i>
+              <span id="generate-label">Generate Clinical Note</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- ===== RIGHT: AI OUTPUT ===== -->
+        <section class="flex flex-col min-h-0 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+              <i data-lucide="sparkles" class="w-4 h-4 text-blue-500"></i>
+              <h2 class="text-sm font-bold text-slate-900">AI Generated SOAP Note</h2>
+            </div>
+            <span class="text-[11px] font-medium text-slate-400">PART-compliant formatting</span>
+          </div>
+
+          <div id="output-container" class="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
+
+            <!-- STATE 1: EMPTY -->
+            <div id="empty-state" class="h-full min-h-[420px] flex flex-col items-center justify-center text-center px-8 py-16">
+              <div class="w-14 h-14 rounded-2xl bg-slate-50 ring-1 ring-slate-200 flex items-center justify-center mb-4">
+                <i data-lucide="file-symlink" class="w-6 h-6 text-slate-300"></i>
+              </div>
+              <p class="text-sm font-semibold text-slate-500">Enter shorthand and click generate.</p>
+              <p class="text-xs text-slate-400 mt-1.5 max-w-[220px]">Your structured SOAP note will appear here, ready to review and export.</p>
+            </div>
+
+            <!-- STATE 2: LOADING -->
+            <div id="loading-state" class="hidden h-full min-h-[420px] px-6 py-8">
+              <div class="flex items-center justify-center gap-2.5 mb-8">
+                <div class="relative w-5 h-5">
+                  <div class="absolute inset-0 rounded-full border-2 border-blue-100"></div>
+                  <div class="absolute inset-0 rounded-full border-2 border-blue-600 border-t-transparent animate-spin"></div>
+                </div>
+                <p id="loading-text" class="text-sm font-semibold text-blue-700 transition-opacity duration-300">Analyzing chiropractic PART criteria...</p>
+              </div>
+
+              <div class="space-y-6 animate-pulse">
+                <div>
+                  <div class="h-3.5 w-24 bg-slate-200 rounded mb-3"></div>
+                  <div class="space-y-2">
+                    <div class="h-3 w-full bg-slate-100 rounded"></div>
+                    <div class="h-3 w-5/6 bg-slate-100 rounded"></div>
+                    <div class="h-3 w-3/4 bg-slate-100 rounded"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="h-3.5 w-20 bg-slate-200 rounded mb-3"></div>
+                  <div class="space-y-2">
+                    <div class="h-3 w-full bg-slate-100 rounded"></div>
+                    <div class="h-3 w-4/6 bg-slate-100 rounded"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="h-3.5 w-28 bg-slate-200 rounded mb-3"></div>
+                  <div class="space-y-2">
+                    <div class="h-3 w-5/6 bg-slate-100 rounded"></div>
+                    <div class="h-3 w-2/3 bg-slate-100 rounded"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- STATE 3: COMPLETE -->
+            <div id="complete-state" class="hidden px-6 py-6 space-y-5"></div>
+
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+  <div class="toast-enter flex items-center gap-2 bg-slate-900 text-white text-sm font-medium px-4 py-2.5 rounded-lg shadow-lg">
+    <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-text">Copied to clipboard!</span>
+  </div>
+</div>
+
+<script>
+  function safeCreateIcons() {
+    if (window.lucide && typeof lucide.createIcons === 'function') {
+      lucide.createIcons();
+    }
+  }
+  safeCreateIcons();
+
+  // ---- Simulated SOAP note plain text (used for clipboard copy) ----
+  const soapPlainText =
+`SUBJECTIVE:
+- Chief Complaint: Worsening lower back pain (onset: 3 days ago).
+- Severity: 6/10.
+- Aggravating Factors: Prolonged sitting.
+
+OBJECTIVE:
+- ROM: Lumbar spine restricted in flexion and right lateral bending.
+- Musculature: Hypertonicity/spasm noted in right Quadratus Lumborum.
+- Subluxation/PART: Palpatory restrictions noted at L4 and L5.
+
+ASSESSMENT:
+- Lumbar subluxation (M99.03).
+- Myalgia (M79.1).
+- Patient responded well to treatment with immediate reported relief.
+
+PLAN:
+- Treatment: CMT (Chiropractic Manipulative Treatment) applied to L5 (supine).
+- Home Care: Cryotherapy (Ice) to lumbar region for 15 minutes as needed.
+- Follow-up: Schedule next visit for Tuesday.`;
+
+  // ---- Simulated SOAP note HTML (used for rendered output) ----
+  function renderSoapSections() {
+    const sections = [
+      {
+        key: 'S',
+        label: 'Subjective',
+        icon: 'message-circle',
+        color: 'blue',
+        items: [
+          ['Chief Complaint', 'Worsening lower back pain (onset: 3 days ago).'],
+          ['Severity', '6/10.'],
+          ['Aggravating Factors', 'Prolonged sitting.'],
+        ],
+      },
+      {
+        key: 'O',
+        label: 'Objective',
+        icon: 'stethoscope',
+        color: 'indigo',
+        items: [
+          ['ROM', 'Lumbar spine restricted in flexion and right lateral bending.'],
+          ['Musculature', 'Hypertonicity/spasm noted in right Quadratus Lumborum.'],
+          ['Subluxation/PART', 'Palpatory restrictions noted at L4 and L5.'],
+        ],
+      },
+      {
+        key: 'A',
+        label: 'Assessment',
+        icon: 'clipboard-check',
+        color: 'amber',
+        items: [
+          ['Diagnosis', 'Lumbar subluxation (M99.03).'],
+          ['Diagnosis', 'Myalgia (M79.1).'],
+          ['Response', 'Patient responded well to treatment with immediate reported relief.'],
+        ],
+      },
+      {
+        key: 'P',
+        label: 'Plan',
+        icon: 'calendar-check-2',
+        color: 'emerald',
+        items: [
+          ['Treatment', 'CMT (Chiropractic Manipulative Treatment) applied to L5 (supine).'],
+          ['Home Care', 'Cryotherapy (Ice) to lumbar region for 15 minutes as needed.'],
+          ['Follow-up', 'Schedule next visit for Tuesday.'],
+        ],
+      },
+    ];
+
+    const colorMap = {
+      blue: { badge: 'bg-blue-50 text-blue-700 ring-blue-100', dot: 'bg-blue-500', icon: 'text-blue-500' },
+      indigo: { badge: 'bg-indigo-50 text-indigo-700 ring-indigo-100', dot: 'bg-indigo-500', icon: 'text-indigo-500' },
+      amber: { badge: 'bg-amber-50 text-amber-700 ring-amber-100', dot: 'bg-amber-500', icon: 'text-amber-500' },
+      emerald: { badge: 'bg-emerald-50 text-emerald-700 ring-emerald-100', dot: 'bg-emerald-500', icon: 'text-emerald-500' },
+    };
+
+    return sections.map((section, idx) => {
+      const c = colorMap[section.color];
+      const rows = section.items.map(([label, text]) => `
+        <li class="flex gap-2.5 py-1.5">
+          <span class="mt-1.5 w-1.5 h-1.5 rounded-full ${c.dot} shrink-0"></span>
+          <p class="text-[13.5px] leading-relaxed text-slate-700">
+            <span class="font-semibold text-slate-900">${label}:</span> ${text}
+          </p>
+        </li>`).join('');
+
+      return `
+      <div class="rounded-xl border border-slate-200 overflow-hidden animate-slide-up" style="animation-delay:${idx * 60}ms">
+        <div class="flex items-center gap-2 px-4 py-2.5 bg-slate-50/70 border-b border-slate-100">
+          <span class="inline-flex items-center justify-center w-6 h-6 rounded-md ${c.badge} ring-1 ring-inset text-[11px] font-extrabold">${section.key}</span>
+          <i data-lucide="${section.icon}" class="w-3.5 h-3.5 ${c.icon}"></i>
+          <h3 class="text-sm font-bold text-slate-800">${section.label}</h3>
+        </div>
+        <ul class="px-4 py-2.5">${rows}</ul>
+      </div>`;
+    }).join('');
+  }
+
+  // ---- Elements ----
+  const generateBtn = document.getElementById('generate-btn');
+  const generateIcon = document.getElementById('generate-icon');
+  const generateLabel = document.getElementById('generate-label');
+  const transcriptInput = document.getElementById('transcript-input');
+
+  const emptyState = document.getElementById('empty-state');
+  const loadingState = document.getElementById('loading-state');
+  const completeState = document.getElementById('complete-state');
+  const loadingText = document.getElementById('loading-text');
+
+  const statusBadge = document.getElementById('status-badge');
+  const statusDot = document.getElementById('status-dot');
+  const copyBtn = document.getElementById('copy-btn');
+  const exportBtn = document.getElementById('export-btn');
+
+  const toast = document.getElementById('toast');
+  const toastText = document.getElementById('toast-text');
+
+  let toastTimeout = null;
+
+  function showToast(message) {
+    toastText.textContent = message;
+    toast.classList.remove('hidden');
+    toast.querySelector('div').classList.remove('toast-enter');
+    void toast.offsetWidth;
+    toast.querySelector('div').classList.add('toast-enter');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => toast.classList.add('hidden'), 2200);
+  }
+
+  function setLoadingButton(isLoading) {
+    generateBtn.disabled = isLoading;
+    if (isLoading) {
+      generateIcon.setAttribute('data-lucide', 'loader-2');
+      generateIcon.classList.add('animate-spin');
+      generateLabel.textContent = 'Generating...';
+    } else {
+      generateIcon.setAttribute('data-lucide', 'wand-sparkles');
+      generateIcon.classList.remove('animate-spin');
+      generateLabel.textContent = 'Generate Clinical Note';
+    }
+    safeCreateIcons();
+  }
+
+  function setReadyToExport() {
+    statusBadge.classList.remove('bg-slate-100', 'text-slate-600', 'ring-slate-200');
+    statusBadge.classList.add('bg-emerald-50', 'text-emerald-700', 'ring-emerald-100');
+    statusDot.classList.remove('bg-slate-400');
+    statusDot.classList.add('bg-emerald-500');
+    statusBadge.lastChild.textContent = 'Ready to Export';
+
+    copyBtn.disabled = false;
+    copyBtn.classList.remove('text-slate-400', 'cursor-not-allowed');
+    copyBtn.classList.add('text-slate-700', 'hover:bg-slate-50', 'border-slate-300');
+
+    exportBtn.disabled = false;
+    exportBtn.classList.remove('bg-slate-200', 'text-slate-400', 'cursor-not-allowed');
+    exportBtn.classList.add('bg-blue-600', 'hover:bg-blue-700', 'text-white', 'shadow-sm', 'shadow-blue-600/20', 'cursor-pointer');
+  }
+
+  generateBtn.addEventListener('click', () => {
+    if (!transcriptInput.value.trim()) return;
+
+    setLoadingButton(true);
+    emptyState.classList.add('hidden');
+    completeState.classList.add('hidden');
+    completeState.innerHTML = '';
+    loadingState.classList.remove('hidden');
+
+    loadingText.textContent = 'Analyzing chiropractic PART criteria...';
+    const midway = setTimeout(() => {
+      loadingText.style.opacity = 0;
+      setTimeout(() => {
+        loadingText.textContent = 'Structuring SOAP note...';
+        loadingText.style.opacity = 1;
+      }, 200);
+    }, 1500);
+
+    setTimeout(() => {
+      clearTimeout(midway);
+      loadingState.classList.add('hidden');
+      completeState.innerHTML = renderSoapSections();
+      completeState.classList.remove('hidden');
+      safeCreateIcons();
+
+      setLoadingButton(false);
+      setReadyToExport();
+    }, 3000);
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    if (copyBtn.disabled) return;
+    try {
+      await navigator.clipboard.writeText(soapPlainText);
+    } catch (err) {
+      const ta = document.createElement('textarea');
+      ta.value = soapPlainText;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+
+    const span = copyBtn.querySelector('span');
+    const originalText = span.textContent;
+    const icon = copyBtn.querySelector('i');
+    icon.setAttribute('data-lucide', 'check');
+    span.textContent = 'Copied!';
+    safeCreateIcons();
+    showToast('SOAP note copied to clipboard!');
+
+    setTimeout(() => {
+      icon.setAttribute('data-lucide', 'clipboard-copy');
+      span.textContent = originalText;
+      safeCreateIcons();
+    }, 1800);
+  });
+
+  exportBtn.addEventListener('click', () => {
+    if (exportBtn.disabled) return;
+    showToast('Note exported to EHR (simulated).');
+  });
+</script>
+</body>
+</html>
